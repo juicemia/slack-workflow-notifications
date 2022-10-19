@@ -18181,7 +18181,7 @@ const emojis = {
 }
 
 function getWorkflowStatus(jobs) {
-    const status = statuses.FAILED;
+    let status = statuses.FAILED;
 
     // For a workflow to be considered successful, every job must be successful.
     if (!jobs.find(j => j.conclusion !== statuses.SUCCESS)) {
