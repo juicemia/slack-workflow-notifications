@@ -34,12 +34,12 @@ class GithubClient {
     }
 
     async getCurrentWorkflowRun() {
-        const workflow = await this.octokit.rest.actions.getWorkflowRun({
+        const response = await this.octokit.rest.actions.getWorkflowRun({
             ...this.context.repo,
             run_id: this.context.runId
         });
 
-        return workflow;
+        return response.data;
     }
 };
 
