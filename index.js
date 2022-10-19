@@ -8,14 +8,40 @@ const statuses = {
     CANCELLED: 'cancelled',
     TIMED_OUT: 'timed_out',
     SUCCESS: 'success'
-}
+};
 
 const emojis = {
     [statuses.FAILED]: ':x:',
     [statuses.CANCELLED]: ':no_entry_sign:',
     [statuses.TIMED_OUT]: ':clock10:',
     [statuses.SUCCESS]: ':white_check_mark:'
-}
+};
+
+class GithubClient {
+    constructor(token) {
+        this.octokit = github.getOctokit(token);
+        this.context = github.context;
+    }
+
+    async getJobs() {
+        // Get all jobs except the one that's running this report.
+        const jobs = (await this.octokit.paginate(
+            this.octokit.rest.actions.listJobsForWorkflowRun,
+            { ...this.context.repo, run_id: this.context.runId }
+        )).filter(j => `${j.name}` !== context.job);
+
+        return jobs;
+    }
+
+    async getCurrentWorkflowRun() {
+        const workflow = await this.octokit.rest.actions.getWorkflowRun({
+            ...this.context.repo,
+            run_id: this.context.runId
+        });
+
+        return workflow;
+    }
+};
 
 function getWorkflowStatus(jobs) {
     let status = statuses.FAILED;
@@ -40,37 +66,18 @@ function getWorkflowStatus(jobs) {
     }
 
     return status;
-}
+};
 
-async function getJobs() {
-    const token = core.getInput('github-token');
 
-    const octokit = github.getOctokit(token);
-    const context = github.context;
 
-    console.log(`FILTERING CURRENT JOB ${context.job}`);
-
-    // Get all jobs except the one that's running this report.
-    const jobs = (await octokit.paginate(
-        octokit.rest.actions.listJobsForWorkflowRun,
-        { ...context.repo, run_id: context.runId }
-    )).filter(j => {
-        console.log(`checking job with name ${j.name}`);
-
-        return `${j.name}` !== context.job;
-    });
-
-    return jobs
-}
-
-async function sendSlackNotification(jobs) {
+async function sendSlackNotification(jobs, branch) {
     const context = github.context;
     const workflowStatus = getWorkflowStatus(jobs);
 
     const blocks = jobs.map(j => {
         const url = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}/jobs/${j.id}`;
         // Default to the :moyai: emoji so that it's obvious if something is wrong with the logic.
-        const display = `${context.ref} ${emojis[j.conclusion] || ':moyai:'}`;
+        const display = `${branch} ${emojis[j.conclusion] || ':moyai:'}`;
 
         return {
             'type': 'section',
@@ -105,8 +112,11 @@ async function sendSlackNotification(jobs) {
 }
 
 async function run() {
-    const jobs = await getJobs();
-    await sendSlackNotification(jobs);
+    const githubClient = new GithubClient(core.getInput('github-token'));
+
+    const jobs = await githubClient.getJobs();
+    const branch = (await githubClient.getCurrentWorkflowRun()).head_branch;
+    await sendSlackNotification(jobs, branch);
 }
 
 run().catch(e => {
