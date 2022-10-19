@@ -78,7 +78,7 @@ async function sendSlackNotification(jobs, branch) {
             'text': {
                 'type': 'mrkdwn',
                 // Default to the :moyai: emoji so that it's obvious if something is wrong with the logic.
-                'text': `<${j.html_url}|${branch} ${emojis[j.conclusion] || ':moyai:'}>`
+                'text': `<${j.html_url}|${branch} - ${j.name} ${emojis[j.conclusion] || ':moyai:'}>`
             }
         }
     });
