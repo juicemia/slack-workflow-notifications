@@ -75,15 +75,12 @@ async function sendSlackNotification(jobs, branch) {
     const workflowStatus = getWorkflowStatus(jobs);
 
     const blocks = jobs.map(j => {
-        const url = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}/jobs/${j.id}`;
-        // Default to the :moyai: emoji so that it's obvious if something is wrong with the logic.
-        const display = `${branch} ${emojis[j.conclusion] || ':moyai:'}`;
-
         return {
             'type': 'section',
             'text': {
                 'type': 'mrkdwn',
-                'text': `<${url}|${display}>`
+                // Default to the :moyai: emoji so that it's obvious if something is wrong with the logic.
+                'text': `<${j.html_url}|${branch} ${emojis[j.conclusion] || ':moyai:'}>`
             }
         }
     });
