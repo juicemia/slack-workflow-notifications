@@ -18239,8 +18239,8 @@ async function sendSlackNotification(jobs) {
     });
 
     // This mimics the way `slackapi/slack-github-action` does it, making it easier to use for people already familiar with it.
-    const token = process.env.SLACK_BOT_TOKEN;
-    const channels = core.getInput('channel-id') || '';
+    const token = core.getInput('slack-token');
+    const channels = core.getInput('channels');
 
     const slack = new WebClient(token);
     await Promise.all(channels.split(',').map(async (channel) => {
