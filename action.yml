@@ -1,13 +1,9 @@
 name: 'Slack Workflow Notification'
 description: 'Send notifications to Slack about workflow runs'
 inputs:
-  who-to-greet:  # id of input
-    description: 'Who to greet'
+  github-token:
+    description: 'Token for authenticating with the Github API'
     required: true
-    default: 'World'
-outputs:
-  time: # id of output
-    description: 'The time we greeted you'
 runs:
   using: 'node16'
   main: 'dist/index.js' # Built with @vercel/ncc: `ncc build index.js --license licenses.txt`
