@@ -55,9 +55,9 @@ async function getJobs() {
         octokit.rest.actions.listJobsForWorkflowRun,
         { ...context.repo, run_id: context.runId }
     )).filter(j => {
-        console.log(`checking job with id ${j.id}`);
+        console.log(`checking job with name ${j.name}`);
 
-        return `${j.id}` !== context.job;
+        return `${j.name}` !== context.job;
     });
 
     return jobs
