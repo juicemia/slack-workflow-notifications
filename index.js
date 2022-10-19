@@ -1,96 +1,107 @@
 const core = require('@actions/core');
 const github = require('@actions/github');
+const { WebClient } = require('@slack/web-api');
 
-const FAILED = 'failed';
-const CANCELLED = 'cancelled';
-const TIMED_OUT = 'timed_out';
-const SUCCESS = 'success';
+
+const statuses = {
+    FAILED: 'failed',
+    CANCELLED: 'cancelled',
+    TIMED_OUT: 'timed_out',
+    SUCCESS: 'success'
+}
+
+const emojis = {
+    [statuses.FAILED]: ':x:',
+    [statuses.CANCELLED]: ':no_entry_sign:',
+    [statuses.TIMED_OUT]: ':clock10:',
+    [statuses.SUCCESS]: ':white_check_mark:'
+}
 
 function getWorkflowStatus(jobs) {
-    const status = FAILED;
+    const status = statuses.FAILED;
 
     // For a workflow to be considered successful, every job must be successful.
-    if (!jobs.find(j => j.conclusion !== SUCCESS)) {
-        status = SUCCESS;
+    if (!jobs.find(j => j.conclusion !== statuses.SUCCESS)) {
+        status = statuses.SUCCESS;
     } else {
         // Every subsequent condition is more important than the last. Simply
         // overwriting the status keeps the logic more straightforward.
-        if (jobs.some(j => j.conclusion === CANCELLED)) {
-            status = CANCELLED;
+        if (jobs.some(j => j.conclusion === statuses.CANCELLED)) {
+            status = statuses.CANCELLED;
         }
 
-        if (jobs.some(j => j.conclustion === TIMED_OUT)) {
-            status = TIMED_OUT;
+        if (jobs.some(j => j.conclustion === statuses.TIMED_OUT)) {
+            status = statuses.TIMED_OUT;
         }
 
-        if (jobs.some(j => j.conclusion === FAILED)) {
-            status = FAILED;
+        if (jobs.some(j => j.conclusion === statuses.FAILED)) {
+            status = statuses.FAILED;
         }
     }
+
+    return status;
 }
 
-const run = async () => {
-    // get job statuses for the current workflow run
+async function getJobs() {
     const token = core.getInput('github-token');
 
     const octokit = github.getOctokit(token);
     const context = github.context;
 
-    console.log(context);
-
+    // Get all jobs except the one that's running this report.
     const jobs = (await octokit.paginate(
         octokit.rest.actions.listJobsForWorkflowRun,
-        { ...context.repo, run_id: '3284243608' }
+        { ...context.repo, run_id: context.runId }
     )).filter(j => `${j.id}` !== context.job);
 
-    console.log(jobs);
+    return jobs
+}
 
+async function sendSlackNotification(jobs) {
     const workflowStatus = getWorkflowStatus(jobs);
-    console.log(`Got workflow status: ${workflowStatus}`);
 
-    // const payload = {
-    //     "blocks": [
-    //         {
-    //             "type": "header",
-    //             "text": {
-    //                 "type": "plain_text",
-    //                 "text": "${{ (job.status == 'success' && ':white_check_mark:') || (job.status == 'failure' && ':x:') || (job.status == 'cancelled' && ':no_entry_sign:') }} ${{ github.repository }} - ${{ job.status }}"
-    //             }
-    //         },
-    //         {
-    //             "type": "section",
-    //             "fields": [
-    //                 {
-    //                     "type": "mrkdwn",
-    //                     "text": "*Branch*"
-    //                 },
-    //                 {
-    //                     "type": "mrkdwn",
-    //                     "text": "<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.ref_name }}>"
-    //                 }
-    //             ]
-    //         }
-    //     ]
-    // }
+    const blocks = jobs.map(j => {
+        const url = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}/jobs/${j.id}`;
+        // Default to the :moyai: emoji so that it's obvious if something is wrong with the logic.
+        const display = `<${url}|${context.ref} ${emojis[j.conclusion] || ':moyai:'}>`;
 
-    // create slack payload
+        return {
+            'type': 'section',
+            'text': {
+                'type': 'mrkdwn',
+                'text': `<${url}|${display}>`
+            }
+        }
+    });
 
-    // instantiate slack API client
+    // This mimics the way `slackapi/slack-github-action` does it, making it easier to use for people already familiar with it.
+    const token = process.env.SLACK_BOT_TOKEN;
+    const channels = core.getInput('channel-id') || '';
 
-    // make the call
+    const slack = new WebClient(token);
+    await Promise.all(channels.split(',').map(async (channel) => {
+        await slack.chat.postMessage({
+            channel: channel.trim(),
+            blocks: [
+                {
+                    "type": "header",
+                    "text": {
+                        "type": "plain_text",
+                        "text": `${emojis[workflowStatus]} ${context.repo.owner}/${context.repo.repo}`
+                    }
+                },
+                ...blocks
+            ]
+        });
+    }));
+}
 
+async function run() {
+    const jobs = await getJobs();
+    await sendSlackNotification(jobs);
 }
 
 run().catch(e => {
     console.error(e);
-    core.setFailed(error.message);
+    core.setFailed(e.message);
 });
-
-    // // `who-to-greet` input defined in action metadata file
-    // const nameToGreet = core.getInput('who-to-greet');
-    // console.log(`Hello ${nameToGreet}!`);
-    // const time = (new Date()).toTimeString();
-    // core.setOutput("time", time);
-    // // Get the JSON webhook payload for the event that triggered the workflow
-    // const payload = JSON.stringify(github.context.payload, undefined, 2)
-    // console.log(`The event payload: ${payload}`);
