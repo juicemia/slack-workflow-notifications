@@ -58,6 +58,7 @@ async function getJobs() {
 }
 
 async function sendSlackNotification(jobs) {
+    const context = github.context;
     const workflowStatus = getWorkflowStatus(jobs);
 
     const blocks = jobs.map(j => {
