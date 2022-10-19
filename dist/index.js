@@ -18211,11 +18211,17 @@ async function getJobs() {
     const octokit = github.getOctokit(token);
     const context = github.context;
 
+    console.log(`FILTERING CURRENT JOB ${context.job}`);
+
     // Get all jobs except the one that's running this report.
     const jobs = (await octokit.paginate(
         octokit.rest.actions.listJobsForWorkflowRun,
         { ...context.repo, run_id: context.runId }
-    )).filter(j => `${j.id}` !== context.job);
+    )).filter(j => {
+        console.log(`checking job with id ${j.id}`);
+
+        return `${j.id}` !== context.job;
+    });
 
     return jobs
 }
@@ -18227,7 +18233,7 @@ async function sendSlackNotification(jobs) {
     const blocks = jobs.map(j => {
         const url = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}/jobs/${j.id}`;
         // Default to the :moyai: emoji so that it's obvious if something is wrong with the logic.
-        const display = `<${url}|${context.ref} ${emojis[j.conclusion] || ':moyai:'}>`;
+        const display = `${url}|${context.ref} ${emojis[j.conclusion] || ':moyai:'}`;
 
         return {
             'type': 'section',
@@ -18238,7 +18244,6 @@ async function sendSlackNotification(jobs) {
         }
     });
 
-    // This mimics the way `slackapi/slack-github-action` does it, making it easier to use for people already familiar with it.
     const token = core.getInput('slack-token');
     const channels = core.getInput('channels');
 
@@ -18255,7 +18260,9 @@ async function sendSlackNotification(jobs) {
                     }
                 },
                 ...blocks
-            ]
+            ],
+            // Slack recommends including this as a fallback in case Block Kit doesn't work for some reason.
+            text: `${emojis[workflowStatus]} ${context.repo.owner}/${context.repo.repo}`
         });
     }));
 }
