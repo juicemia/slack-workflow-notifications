@@ -9724,10 +9724,10 @@ const run = async () => {
 
     console.log(context);
 
-    const jobs = await octokit.paginate(
+    const jobs = (await octokit.paginate(
         octokit.rest.actions.listJobsForWorkflowRun,
         { ...context.repo, run_id: '3284243608' }
-    ).filter(j => `${j.id}` !== context.job);
+    )).filter(j => `${j.id}` !== context.job);
 
     console.log(jobs);
 
