@@ -18191,7 +18191,7 @@ class GithubClient {
         const jobs = (await this.octokit.paginate(
             this.octokit.rest.actions.listJobsForWorkflowRun,
             { ...this.context.repo, run_id: this.context.runId }
-        )).filter(j => `${j.name}` !== context.job);
+        )).filter(j => `${j.name}` !== this.context.job);
 
         return jobs;
     }
@@ -18230,8 +18230,6 @@ function getWorkflowStatus(jobs) {
 
     return status;
 };
-
-
 
 async function sendSlackNotification(jobs, branch) {
     const context = github.context;
