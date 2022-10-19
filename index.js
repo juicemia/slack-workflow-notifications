@@ -70,7 +70,7 @@ async function sendSlackNotification(jobs) {
     const blocks = jobs.map(j => {
         const url = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}/jobs/${j.id}`;
         // Default to the :moyai: emoji so that it's obvious if something is wrong with the logic.
-        const display = `${url}|${context.ref} ${emojis[j.conclusion] || ':moyai:'}`;
+        const display = `${context.ref} ${emojis[j.conclusion] || ':moyai:'}`;
 
         return {
             'type': 'section',
