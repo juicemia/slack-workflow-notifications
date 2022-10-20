@@ -80,17 +80,10 @@ async function sendSlackNotification(jobs, run) {
 
     const blocks = [
         {
-            'type': 'header',
-            'text': {
-                'type': 'plain_text',
-                'text': `${emojis[workflowStatus]} ${context.repo.owner}/${context.repo.repo}`
-            }
-        },
-        {
             'type': 'section',
             'text': {
                 'type': 'mrkdwn',
-                'text': `<${run.html_url}|${run.name}>`
+                'text': `${emojis[workflowStatus]} *${context.repo.owner}/${context.repo.repo}* <${run.html_url}|${run.name}>`
             }
         }
     ];
