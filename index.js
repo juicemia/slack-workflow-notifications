@@ -24,11 +24,18 @@ class GithubClient {
     }
 
     async getJobs() {
+        const current = await this.octokit.rest.actions.getJobForWorkflowRun({
+            ...this.context.repo,
+            job_id: this.context.job,
+        })
+
+        console.log(current);
+
         // Get all jobs except the one that's running this report.
         const jobs = (await this.octokit.paginate(
             this.octokit.rest.actions.listJobsForWorkflowRun,
             { ...this.context.repo, run_id: this.context.runId }
-        )).filter(j => `${j.name}` !== this.context.job);
+        )).filter(j => j.id !== current.id);
 
         return jobs;
     }

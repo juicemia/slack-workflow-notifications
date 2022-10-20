@@ -10,6 +10,9 @@ inputs:
   slack-token:
     description: 'Token for authenticating with Slack'
     required: true
+  jobs:
+    description: 'List of job names to evaluate for overall workflow status'
+    required: true
 runs:
   using: 'node16'
   main: 'dist/index.js' # Built with @vercel/ncc: `ncc build index.js --license licenses.txt`
