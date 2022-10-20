@@ -73,20 +73,40 @@ function getWorkflowStatus(jobs) {
     return status;
 };
 
-async function sendSlackNotification(jobs, branch) {
+async function sendSlackNotification(jobs, run) {
     const context = github.context;
+    const condensed = core.getInput('condensed').toLowerCase() === 'true';
     const workflowStatus = getWorkflowStatus(jobs);
 
-    const blocks = jobs.map(j => {
-        return {
+    const blocks = [
+        {
+            'type': 'header',
+            'text': {
+                'type': 'plain_text',
+                'text': `${emojis[workflowStatus]} ${context.repo.owner}/${context.repo.repo}`
+            }
+        },
+        {
             'type': 'section',
             'text': {
                 'type': 'mrkdwn',
-                // Default to the :moyai: emoji so that it's obvious if something is wrong with the logic.
-                'text': `<${j.html_url}|${branch} - ${j.name} ${emojis[j.conclusion] || ':moyai:'}>`
+                'text': `<${run.html_url}|${run.name}>`
             }
         }
-    });
+    ];
+
+    if (!condensed) {
+        blocks.push(jobs.map(j => {
+            return {
+                'type': 'section',
+                'text': {
+                    'type': 'mrkdwn',
+                    // Default to the :moyai: emoji so that it's obvious if something is wrong with the logic.
+                    'text': `<${j.html_url}|${run.head_branch} - ${j.name} ${emojis[j.conclusion] || ':moyai:'}>`
+                }
+            }
+        }));
+    }
 
     const token = core.getInput('slack-token');
     const channels = core.getInput('channels');
@@ -95,16 +115,7 @@ async function sendSlackNotification(jobs, branch) {
     await Promise.all(channels.split(',').map(async (channel) => {
         await slack.chat.postMessage({
             channel: channel.trim(),
-            blocks: [
-                {
-                    "type": "header",
-                    "text": {
-                        "type": "plain_text",
-                        "text": `${emojis[workflowStatus]} ${context.repo.owner}/${context.repo.repo}`
-                    }
-                },
-                ...blocks
-            ],
+            blocks: blocks,
             // Slack recommends including this as a fallback in case Block Kit doesn't work for some reason.
             text: `${emojis[workflowStatus]} ${context.repo.owner}/${context.repo.repo}`
         });
@@ -115,8 +126,8 @@ async function run() {
     const githubClient = new GithubClient(core.getInput('github-token'));
 
     const jobs = await githubClient.getJobs();
-    const branch = (await githubClient.getCurrentWorkflowRun()).head_branch;
-    await sendSlackNotification(jobs, branch);
+    const run = await githubClient.getCurrentWorkflowRun();
+    await sendSlackNotification(jobs, run);
 }
 
 run().catch(e => {

@@ -13,6 +13,10 @@ inputs:
   jobs:
     description: 'List of job names to evaluate for overall workflow status'
     required: true
+  condensed:
+    description: 'Show only the status of the whole workflow run'
+    required: true
+    default: 'true'
 runs:
   using: 'node16'
   main: 'dist/index.js' # Built with @vercel/ncc: `ncc build index.js --license licenses.txt`
