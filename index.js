@@ -24,18 +24,16 @@ class GithubClient {
     }
 
     async getJobs() {
-        const current = await this.octokit.rest.actions.getJobForWorkflowRun({
-            ...this.context.repo,
-            job_id: this.context.job,
-        })
-
-        console.log(current);
-
         // Get all jobs except the one that's running this report.
         const jobs = (await this.octokit.paginate(
             this.octokit.rest.actions.listJobsForWorkflowRun,
             { ...this.context.repo, run_id: this.context.runId }
-        )).filter(j => j.id !== current.id);
+            // `null` conclusion means the job hasn't finished yet, so
+            // since there's no way reliably figure out which job is the
+            // current job from a list of jobs, it's assumed that this
+            // is the last job or the user doesn't care about reporting
+            // on any jobs after this one.
+        )).filter(j => j.conclusion !== null);
 
         return jobs;
     }
